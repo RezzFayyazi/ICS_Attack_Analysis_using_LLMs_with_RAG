@@ -85,6 +85,7 @@ class MITREICSAnalysis:
         docs = self.vectordb.similarity_search(question, k=k)
         for doc in docs:
             print(doc.metadata)
+            
 
     def build_qa_chain_prompt(self):
         template = """You are a cybersecurity analyst with the expertise in analyzing cyberattack procedures. Consider the relevant context provided below and answer the question.
@@ -112,9 +113,11 @@ class MITREICSAnalysis:
 
     def load_questions_from_csv(self, csv_file):
         list_of_questions = []
-        df = pd.read_csv(csv_file)
+        df = pd.read_csv(csv_file).head(3)
         for procedure in df['Description']:
             temp = f"Knowing this ICS attack procedure <<{procedure}>>, what MITRE ATT&CK ICS tactics will a cyber adversary achieve with this technique?"
+            self.perform_similarity_search(temp, k=3)
+            print('------------------')
             list_of_questions.append(temp)
         return list_of_questions
 

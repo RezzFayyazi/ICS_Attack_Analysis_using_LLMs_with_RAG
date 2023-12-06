@@ -51,6 +51,8 @@ def main():
                 try:
                     question = f"Knowing this ICS attack procedure <<{procedure}>>, what MITRE ATT&CK ICS tactics will a cyber adversary achieve with this technique?"
                     print(question)
+                    analysis.perform_similarity_search(question, k=3)
+                    print('------------------')
                     result = analysis.perform_qa(question, prompt_template)
                     print('------------------')
                     predictions.append(result)
