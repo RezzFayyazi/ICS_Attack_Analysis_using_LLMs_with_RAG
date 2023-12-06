@@ -41,7 +41,7 @@ class MITREICSAnalysis:
         self.data = self.load_data(data_source, mode)      
         self.embeddings = OpenAIEmbeddings(openai_api_key=api_key)
         self.vectordb = FAISS.from_documents(documents=self.data, embedding=self.embeddings)
-        self.llm = ChatOpenAI(model_name=llm_model_name, temperature=0, openai_api_key=api_key, seed=1106)
+        self.llm = ChatOpenAI(model_name=llm_model_name, temperature=0, openai_api_key=api_key, model_kwargs={"seed": 1106})
         self.prompt_template = self.build_qa_chain_prompt()
 
     def setup_openai(self, api_key):
@@ -68,7 +68,6 @@ class MITREICSAnalysis:
         retr_procecdures = []
         retr_urls = []
         for doc in docs[1:]:
-            print(doc.metadata)
             retr_procecdures.append(doc.metadata.get('source'))
             retr_urls.append(doc.metadata.get('URL'))
     
@@ -106,7 +105,6 @@ class MITREICSAnalysis:
             return_source_documents=True,
             chain_type_kwargs={"prompt": prompt_template}
         )
-        print(qa_chain)
         result = qa_chain({"query": question})
         print(result["result"],'\n')
         return result
@@ -239,5 +237,5 @@ class MITREICSAnalysis:
             separators=["\n\n", "\n", " ", ""]
         )
         splits = text_splitter.split_documents(docs)
-        print(len(splits))
+        print("chunks:", len(splits))
         return splits

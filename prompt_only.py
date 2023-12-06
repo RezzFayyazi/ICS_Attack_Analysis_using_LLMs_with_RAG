@@ -2,9 +2,13 @@ import openai
 import time
 import pandas as pd
 import random
+import configparser
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 def get_completion(prompt, model="gpt-4-1106-preview"):
-    openai.api_key = "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"
+    api_key = config.get('API', 'OpenAI_Key')
+    openai.api_key = api_key
     messages = [{"role": "system", 
                  "content":"You are a cybersecurity analyst with the expertise in analyzing cyberattack procedures."},
                 {"role": "user", "content": prompt}]
@@ -18,7 +22,7 @@ def get_completion(prompt, model="gpt-4-1106-preview"):
 
 def load_questions_from_csv(csv_file):
     list_of_questions = []
-    df = pd.read_csv(csv_file)
+    df = pd.read_csv(csv_file).head(3)
     for procedure in df['Description']:
         temp = f"Knowing this ICS attack procedure <<{procedure}>>, what MITRE ATT&CK ICS tactics will a cyber adversary achieve with this technique?"
         list_of_questions.append(temp)
@@ -49,7 +53,3 @@ def prediction(list_of_questions):
                 time.sleep(delay)
     return predictions
 
-list_of_questions = load_questions_from_csv('./Data/ICS_Procedures_main.csv')
-predictions = prediction(list_of_questions)
-df = pd.DataFrame(predictions)
-df.to_csv('./preds_gpt-4-Turbo_prompt_only.csv', index=False)

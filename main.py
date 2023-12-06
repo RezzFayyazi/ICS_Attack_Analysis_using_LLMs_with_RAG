@@ -2,6 +2,7 @@ import argparse
 import configparser
 import openai
 from RAG import MITREICSAnalysis
+from prompt_only import *
 import pandas as pd
 import random
 import time
@@ -10,22 +11,40 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 
 parser = argparse.ArgumentParser(description="MITRE ICS Analysis Tool")
-parser.add_argument('--mode', type=str, default='all_urls', help='Mode of operation (reference_url, similar_procedure_urls, all_urls)')
+parser.add_argument('--mode', type=str, default='all_urls', help='Mode of operation (prompt_only, reference_url, similar_procedure_urls, all_urls)')
 parser.add_argument('--llm', type=str, default='gpt-3.5-turbo-1106', help='LLM for use: e.g., gpt-3.5-turbo-1106')
 args = parser.parse_args()
 
+def handle_nan(value):
+    if isinstance(value, list):
+        return value  
+    if pd.isna(value):
+        return None 
+    try:
+        return ast.literal_eval(value) 
+    except ValueError:
+        return None 
+    
 def main():
     api_key = config.get('API', 'OpenAI_Key')
     dataset_path = './Data/ICS_Procedures_main.csv'
-    df = pd.read_csv(dataset_path)
+    df = pd.read_csv(dataset_path).head(3)
+
+    if args.mode=='prompt_only':
+        list_of_questions = load_questions_from_csv(dataset_path)
+        predictions = prediction(list_of_questions)
+
     if args.mode=='all_urls':
-        analysis = MITREICSAnalysis(api_key, data_source=None,  mode='url', llm_model_name=args.llm)
+        analysis = MITREICSAnalysis(api_key, data_source=None,  mode=args.mode, llm_model_name=args.llm)
         list_of_questions = analysis.load_questions_from_csv(dataset_path)
         predictions = analysis.perform_qa_for_list(list_of_questions)
 
     if args.mode=='reference_url':
         predictions = []
+        counter=0
         for procedure, url in zip(df['Description'], df['URL']):
+            counter += 1
+            print('Procedure:', counter)
             analysis = MITREICSAnalysis(api_key=api_key, data_source=url, mode=args.mode, llm_model_name= args.llm)
             prompt_template = analysis.build_qa_chain_prompt()
             while True:
@@ -44,12 +63,13 @@ def main():
         predictions = []
         analysis = MITREICSAnalysis(api_key=api_key, data_source=dataset_path, mode='csv', llm_model_name=args.llm)
         all_procedures_df = pd.DataFrame(columns=["Procedure", "Procedure URL", "Retrieved Procedures", "Retrieved Procedure URLs", "Tactic(s)"])
-        for procedure, url, tactic1, tactic2 in zip(df['Procedures'], df['URL'], df['Tactic1'], df['Tactic2']):
+        for procedure, url, tactic1, tactic2 in zip(df['Description'], df['URL'], df['Tactic1'], df['Tactic2']):
             procedure_data = analysis.perform_procedure_retrieval(procedure, url, [tactic1, tactic2])
             procedure_data_df = pd.DataFrame([procedure_data])
             all_procedures_df = pd.concat([all_procedures_df, procedure_data_df], ignore_index=True)
+        
+        all_procedures_df['Tactic(s)'] = all_procedures_df['Tactic(s)'].apply(handle_nan)
 
-        all_procedures_df['Tactic(s)'] = all_procedures_df['Tactic(s)'].apply(lambda x: ast.literal_eval(x.replace('nan', 'None')))
         max_len = all_procedures_df['Tactic(s)'].str.len().max()
         for i in range(max_len):
             column_name = f'Tactic{i+1}' 
@@ -57,6 +77,7 @@ def main():
         
         all_procedures_df.drop('Tactic(s)', axis=1, inplace=True)
         all_procedures_df.to_csv('./Data/procedures_similarity_main.csv', index=False)
+        all_procedures_df = pd.read_csv('./Data/procedures_similarity_main.csv')
         all_procedures_df['Retrieved Procedure URLs'] = all_procedures_df['Retrieved Procedure URLs'].apply(lambda x: x.replace("'", '"'))
         all_procedures_df['Retrieved Procedure URLs'] = all_procedures_df['Retrieved Procedure URLs'].apply(lambda x: ast.literal_eval(x))
         counter = 0
@@ -79,7 +100,7 @@ def main():
                     time.sleep(delay)
 
     final_df = pd.DataFrame(predictions)    
-    final_df.to_csv(f'./preds_{args.llm}_{args.mode}.csv', index=False)
+    final_df.to_csv(f'./demo_preds_{args.llm}_{args.mode}.csv', index=False)
 
 if __name__ == "__main__":
     main()
