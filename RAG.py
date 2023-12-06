@@ -29,21 +29,31 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
 import nest_asyncio
+import logging
+import configparser
 nest_asyncio.apply()
 sys.path.append('../..')
 
 
+class MITREICSAnalysis:
+    def __init__(self, api_key, data_source=None, mode='url', llm_model_name="gpt-3.5-turbo-1106"):
+        self.setup_openai(api_key)
+        self.data = self.load_data(data_source, mode)      
+        self.embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+        self.vectordb = FAISS.from_documents(documents=self.data, embedding=self.embeddings)
+        self.llm = ChatOpenAI(model_name=llm_model_name, temperature=0, openai_api_key=api_key, seed=1106)
+        self.prompt_template = self.build_qa_chain_prompt()
 
-
-class MITRE_ICS_Analysis:
-    def __init__(self, api_key, data_source, mode='url'):
+    def setup_openai(self, api_key):
         openai.api_key = api_key
+
+    def load_data(self, data_source, mode):
         if mode == 'csv':
-            self.loader = CSVLoader(file_path=data_source)
+            self.loader = CSVLoader(data_source, source_column='Description', metadata_columns=['URL'] , encoding="ISO-8859-1")
             self.data = self.loader.load()
         elif mode == 'all_urls':
             self.data = self.load_and_split_web_content_all()
-        elif mode == 'exact_url':
+        elif mode == 'reference_url':
             urls = data_source
             self.data = self.load_and_split_web_content(urls)
         elif mode == 'similar_procedure_urls':
@@ -51,19 +61,8 @@ class MITRE_ICS_Analysis:
             self.data = self.load_and_split_web_content(urls)
         else:
             raise ValueError("Invalid mode.")
-        
-        self.embeddings = OpenAIEmbeddings(openai_api_key=openai.api_key)
-        self.vectordb = FAISS.from_documents(
-            documents=self.data,
-            embedding=self.embeddings,            
-        )
-        self.llm_name = "gpt-3.5-turbo-1106"
-        self.llm = ChatOpenAI(model_name=self.llm_name, temperature=0, openai_api_key=openai.api_key, seed=1106)
-
-
-        self.prompt_template = self.build_qa_chain_prompt()
-
-        
+        return self.data
+     
     def perform_procedure_retrieval(self, procedure, url, tactics, k=3):
         docs = self.vectordb.similarity_search(procedure, k=k)
         retr_procecdures = []
@@ -91,11 +90,11 @@ class MITRE_ICS_Analysis:
     def build_qa_chain_prompt(self):
         template = """You are a cybersecurity analyst with the expertise in analyzing cyberattack procedures. Consider the relevant context provided below and answer the question.
 
-Relevant Context: {context}
+        Relevant Context: {context}
 
-Question: {question}
+        Question: {question}
 
-Please write the response in the following format: ICS tactic(s)
+        Please write the response in the following format: ICS tactic(s)
         """
         return PromptTemplate.from_template(template)
 
@@ -136,15 +135,17 @@ Please write the response in the following format: ICS tactic(s)
                     time.sleep(5)
         return predictions
 
+
     def load_and_split_web_content(self, url):
         docs = WebBaseLoader(url).load()
          
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 8000,
+            chunk_size = 5000,
             separators=["\n\n", "\n", " ", ""]
         )
         splits = text_splitter.split_documents(docs)
         return splits 
+
     
     def load_and_split_web_content_all(self):
         loader = WebBaseLoader(["https://attack.mitre.org/techniques/T0800",
@@ -234,76 +235,9 @@ Please write the response in the following format: ICS tactic(s)
 
 
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 4000,
+            chunk_size = 5000,
             separators=["\n\n", "\n", " ", ""]
         )
         splits = text_splitter.split_documents(docs)
         print(len(splits))
         return splits
-
-
-if __name__ == "__main__":
-    mode = 'all_urls'
-    api_key  = "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"
-
-    if mode=='all_urls':
-        analysis = MITRE_ICS_Analysis(api_key, loader, mode='url')
-        list_of_questions = analysis.load_questions_from_csv('./Data/Y-MITRE_Procedures.csv')
-        predictions = analysis.perform_qa_for_list(list_of_questions)
-
-    if mode=='exact':
-        predictions = []
-        df = pd.read_csv('./Data/Y-MITRE_Procedures.csv')
-
-        for procedure, url in zip(df['Description'], df['URL']):
-            analysis = MITRE_ICS_Analysis(api_key, url, mode='url')
-            prompt_template = analysis.build_qa_chain_prompt()
-            while True:
-                try:
-                    question = f"Knowing that <<{procedure}>>, what MITRE ATT&CK tactics will a cyber adversary achieve with this technique?"
-                    print(question)
-                    result = analysis.perform_qa(question, prompt_template)
-                    print('------------------')
-                    predictions.append(result)
-                    break
-                except (openai.error.RateLimitError, openai.error.APIError, openai.error.Timeout,
-                        openai.error.OpenAIError, openai.error.ServiceUnavailableError):
-                    time.sleep(8)
-
-    if mode=='similar_procedure_urls':
-        y_dataset_file = "./Data/Y-MITRE_Procedures.csv"
-        analysis = MITRE_ICS_Analysis(api_key, y_dataset_file)
-        all_procedures_df = pd.DataFrame(columns=["Procedure", "Procedure URL", "Retrieved Procedures", "Retrieved Procedure URLs", "Tactic(s)"])
-
-        df = pd.read_csv('./Data/Y-MITRE_Procedures.csv')
-        for procedure, url, tactic1, tactic2, tactic3, tactic4 in zip(df['Procedures'], df['URL'], df['Tactic1'], df['Tactic2']):
-            procedure_data = analysis.perform_procedure_retrieval(procedure, url, [tactic1, tactic2, tactic3, tactic4])
-            procedure_data_df = pd.DataFrame([procedure_data])
-            all_procedures_df = pd.concat([all_procedures_df, procedure_data_df], ignore_index=True)
-            all_procedures_df.to_csv('./retrieve_similar_procedures.csv', index=False)
-
-        predictions = []
-        df = pd.read_csv('./Data/procedures_similarity_main.csv')
-        df['Retrieved Procedure URLs'] = df['Retrieved Procedure URLs'].apply(lambda x: x.replace("'", '"'))
-        df['Retrieved Procedure URLs'] = df['Retrieved Procedure URLs'].apply(lambda x: ast.literal_eval(x))
-        counter = 0
-        for procedure, retrieved_urls in list(zip(df['Procedure'], df['Retrieved Procedure URLs']))[8000:]:
-            counter += 1
-            print('Procedure:', counter)
-            analysis = MITRE_ICS_Analysis(api_key, retrieved_urls, mode='url')
-            prompt_template = analysis.build_qa_chain_prompt()
-            while True:
-                try:
-                    question = f"Knowing that <<{procedure}>>, what MITRE ATT&CK tactics will a cyber adversary achieve with this technique?"
-                    print(question)
-                    result = analysis.perform_qa(question, prompt_template)
-                    print('------------------')
-                    predictions.append(result)
-                    break
-                except (openai.error.RateLimitError, openai.error.APIError, openai.error.Timeout,
-                        openai.error.OpenAIError, openai.error.ServiceUnavailableError):
-                    delay = random.randint(2, 6)
-                    time.sleep(delay)
-
-    df = pd.DataFrame(predictions)    
-    df.to_csv('./preds_gpt-3.5_with_all_urls_gpt-3.5-16k.csv', index=False)
