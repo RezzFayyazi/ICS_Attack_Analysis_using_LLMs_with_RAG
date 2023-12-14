@@ -28,7 +28,7 @@ def handle_nan(value):
 def main():
     api_key = config.get('API', 'OpenAI_Key')
     dataset_path = './Data/ICS_Procedures_main.csv'
-    df = pd.read_csv(dataset_path).head(3)
+    df = pd.read_csv(dataset_path)
 
     if args.mode=='prompt_only':
         list_of_questions = load_questions_from_csv(dataset_path)
@@ -102,7 +102,7 @@ def main():
                     time.sleep(delay)
 
     final_df = pd.DataFrame(predictions)    
-    final_df.to_csv(f'./demo_preds_{args.llm}_{args.mode}.csv', index=False)
+    final_df.to_csv(f'./Results/preds_{args.llm}_{args.mode}.csv', index=False)
 
 if __name__ == "__main__":
     main()

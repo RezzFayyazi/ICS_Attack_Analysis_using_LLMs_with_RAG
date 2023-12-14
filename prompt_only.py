@@ -22,7 +22,7 @@ def get_completion(prompt, model="gpt-4-1106-preview"):
 
 def load_questions_from_csv(csv_file):
     list_of_questions = []
-    df = pd.read_csv(csv_file).head(3)
+    df = pd.read_csv(csv_file)
     for procedure in df['Description']:
         temp = f"Knowing this ICS attack procedure <<{procedure}>>, what MITRE ATT&CK ICS tactics will a cyber adversary achieve with this technique?"
         list_of_questions.append(temp)

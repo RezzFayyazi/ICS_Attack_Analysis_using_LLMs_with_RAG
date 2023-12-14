@@ -10,27 +10,20 @@ import os
 import sys
 import openai
 import time
-import ast
-import random
-import transformers
 import pandas as pd
 import nest_asyncio
-from torch import cuda
 from langchain.document_loaders.csv_loader import CSVLoader
 from langchain.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter, TokenTextSplitter, NLTKTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import Chroma, FAISS
+from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
-from langchain.llms import HuggingFacePipeline
 from langchain.prompts import PromptTemplate
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
 import nest_asyncio
-import logging
-import configparser
 nest_asyncio.apply()
 sys.path.append('../..')
 
@@ -113,7 +106,7 @@ class MITREICSAnalysis:
 
     def load_questions_from_csv(self, csv_file):
         list_of_questions = []
-        df = pd.read_csv(csv_file).head(3)
+        df = pd.read_csv(csv_file)
         for procedure in df['Description']:
             temp = f"Knowing this ICS attack procedure <<{procedure}>>, what MITRE ATT&CK ICS tactics will a cyber adversary achieve with this technique?"
             self.perform_similarity_search(temp, k=3)
