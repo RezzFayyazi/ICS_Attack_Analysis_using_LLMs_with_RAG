@@ -2,6 +2,19 @@
 
 The aim of this project is to use various Retrieval Augmented Generation (RAG) Techniques with Large Language Models to process the intent behind ICS attack procedure descriptions.
 
+## Installation
+Install the following packages:
+```python
+pip install -q openai==0.27.6
+pip install -q langchain
+pip install -q Pydantic==1.10.12
+pip install -q tiktoken
+pip install -q lark
+pip install -q faiss-cpu
+```
+
+## Usage
+
 In the Data folder, there are three files. The "ICS_Procedures_main.csv" is the main dataset that is crawled from MITRE ATT&CK framework, the "ICS_Procedures_main_encoded.csv" is the encoded version of the dataset for evaluation, and the "procedures_similarity_main.csv" is the file containing the top-2 most similar procedures along with their tactics.
 
 
@@ -12,7 +25,7 @@ The "RAG.py" file contains three different RAG techniques:
 2) reference_url: This is to load the reference URL of each specific procedure description (the reference URL is in the ICS_Procedures_main.csv dataset).
 3) similar_procedure_urls: This is to retrieve URLs that correspond to the top-2 'target' procedure descriptions, which are most similar to the 'source' procedure specified in the query.
 
-**To Run the Code:**
+## How to Run
 
 1) Open the "config.ini" file and put your OpenAI API key in the following format
 2) Run the "main.py" file with the following line:
