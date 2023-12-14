@@ -12,7 +12,7 @@ The "RAG.py" file contains three different RAG techniques:
 2) reference_url: This is to load the reference URL of each specific procedure description (the reference URL is in the ICS_Procedures_main.csv dataset).
 3) similar_procedure_urls: This is to retrieve URLs that correspond to the top-2 'target' procedure descriptions, which are most similar to the 'source' procedure specified in the query.
 
-To run the code:
+**To Run the Code:**
 
 1) Open the "config.ini" file and put your OpenAI API key in the following format
 2) Run the "main.py" file with the following line:
