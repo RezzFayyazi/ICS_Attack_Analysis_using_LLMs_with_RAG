@@ -7,7 +7,7 @@ Install the following packages:
 ```python
 pip install -q openai==0.27.6
 pip install -q langchain
-pip install -q Pydantic==1.10.12
+pip install -q pydantic==1.10.12
 pip install -q tiktoken
 pip install -q lark
 pip install -q faiss-cpu
