@@ -27,7 +27,11 @@ The "RAG.py" file contains three different RAG techniques:
 
 ## How to Run
 
-1) Open the "config.ini" file and put your OpenAI API key in the following format
+1) Create a "config.ini" file and put your OpenAI API key in the following format:
+```python
+[API]
+OpenAI_Key = <YOUR_API_KEY>
+```
 2) Run the "main.py" file with the following line:
 ```python
 python main.py --mode [prompt_only, reference_url, similar_procedure_urls, all_urls] --llm [LLM]
